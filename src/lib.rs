@@ -1,15 +1,18 @@
 use std::marker::PhantomData;
 use rand::SeedableRng;
 
+/// Easy to use interface that handles the map transformations
 pub struct MarkovEngine<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> {
     pub state: M,
     pub rules: Vec<Rule<T>>,
     pos: PhantomData<P>,
     dir: PhantomData<D>
+    // TODO: implement random in the update functions
     //pub seed: Box<dyn SeedableRng>
 }
 
 impl<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> MarkovEngine<M, T, P, D> {
+    /// Initializer since we have phantom types
     pub fn new(state: M, rules: Vec<Rule<T>>) -> Self {
         Self {
             state,
@@ -19,6 +22,7 @@ impl<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> MarkovEngine<M, T,
         }
     }
 
+    /// Updates the map as if it were going by steps
     pub fn update(&mut self) -> Option<(&Rule<T>, Vec<(P, D)>)> {
         for rule in self.rules.iter_mut() {
             // Skip rule if loops was reached
@@ -40,6 +44,7 @@ impl<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> MarkovEngine<M, T,
         None
     }
 
+    /// Runs until no rule is satisfied
     pub fn finish(&mut self) {
         loop {
             let result = self.update();
@@ -53,6 +58,7 @@ impl<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> MarkovEngine<M, T,
 
 /// Stores the state of the canvas being worked on
 pub trait MapState<T: Transformation, P: Pos, D: Dir> {
+    /// Tries to update the map state given one rule
     fn update(&mut self, rule: &Rule<T>) -> Option<Vec<(P, D)>> {
         // Get the match result according to rules
         let matching = self.matching(&rule.comp, &rule.rule_type);
@@ -79,6 +85,8 @@ pub trait MapState<T: Transformation, P: Pos, D: Dir> {
             None
         }
     }
+
+    /// Rule logic router
     fn matching(&self, pattern: &T, rule_type: &Match) -> Option<Vec<(P, D)>> {
         match rule_type {
             Match::Linear => self.linear_match(pattern),
@@ -88,11 +96,19 @@ pub trait MapState<T: Transformation, P: Pos, D: Dir> {
         }
     }
 
+    /// Follows a linear "left to right" finding style until it finds one item that satisfied the rule
     fn linear_match(&self, pattern: &T) -> Option<Vec<(P, D)>>;
+
+    /// Randomly picks for `tries` times until it finds an item that satisfies the rule or runs out of tries
     fn random_match(&self, pattern: &T, tries: u64) -> Option<Vec<(P, D)>>;
+
+    /// Matches all items that dont conflict, if conflicting it may pick the "leftmost" item
     fn match_all_without_conflicts(&self, pattern: &T) -> Option<Vec<(P, D)>>;
+
+    /// Matches all items, if there are conflicts then it runs a supplied superposition function on top of the conflicts
     fn match_all(&self, pattern: &T) -> Option<Vec<(P, D)>>;
 
+    /// Sets the pattern, given the direction and position
     fn set(&mut self, pattern: &T, pos: &P, dir: &D);
 }
 
@@ -119,6 +135,7 @@ impl<T: Transformation> Rule<T> {
         }
     }
 
+    /// If the rule has a set amount of repeats then it will try to bring it to 0
     pub fn use_repeat(&mut self) {
         if let Some(times) = self.repeat {
             match times.checked_sub(1) {
