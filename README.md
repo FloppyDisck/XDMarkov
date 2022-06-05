@@ -1,2 +1,2 @@
-# XDMarkov
+# xDMarkov
 A dimensional Markov implementation
