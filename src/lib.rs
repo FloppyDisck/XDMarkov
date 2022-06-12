@@ -1,19 +1,21 @@
+pub mod markov1D;
+
 use std::marker::PhantomData;
 use rand::SeedableRng;
 
 /// Easy to use interface that handles the map transformations
-pub struct MarkovEngine<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> {
+pub struct MarkovEngine<M: MapState<T, P, D, Slice>, T: Transformation<Slice>, P, D, Slice> {
     pub state: M,
-    pub rules: Vec<Rule<T>>,
+    pub rules: Vec<Rule<T, Slice>>,
     pos: PhantomData<P>,
     dir: PhantomData<D>
     // TODO: implement random in the update functions
     //pub seed: Box<dyn SeedableRng>
 }
 
-impl<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> MarkovEngine<M, T, P, D> {
+impl<M: MapState<T, P, D, Slice>, T: Transformation<Slice>, P, D, Slice> MarkovEngine<M, T, P, D, Slice> {
     /// Initializer since we have phantom types
-    pub fn new(state: M, rules: Vec<Rule<T>>) -> Self {
+    pub fn new(state: M, rules: Vec<Rule<T, Slice>>) -> Self {
         Self {
             state,
             rules,
@@ -23,7 +25,7 @@ impl<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> MarkovEngine<M, T,
     }
 
     /// Updates the map as if it were going by steps
-    pub fn update(&mut self) -> Option<(&Rule<T>, Vec<(P, D)>)> {
+    pub fn update(&mut self) -> Option<(&Rule<T, Slice>, Vec<(P, D)>)> {
         for rule in self.rules.iter_mut() {
             // Skip rule if loops was reached
             if let Some(times) = rule.repeat {
@@ -57,9 +59,9 @@ impl<M: MapState<T, P, D>, T: Transformation, P: Pos, D: Dir> MarkovEngine<M, T,
 
 
 /// Stores the state of the canvas being worked on
-pub trait MapState<T: Transformation, P: Pos, D: Dir> {
+pub trait MapState<T: Transformation<Slice>, P, D, Slice> {
     /// Tries to update the map state given one rule
-    fn update(&mut self, rule: &Rule<T>) -> Option<Vec<(P, D)>> {
+    fn update(&mut self, rule: &Rule<T, Slice>) -> Option<Vec<(P, D)>> {
         // Get the match result according to rules
         let matching = self.matching(&rule.comp, &rule.rule_type);
 
@@ -113,14 +115,14 @@ pub trait MapState<T: Transformation, P: Pos, D: Dir> {
 }
 
 /// Individual Markov rule logic
-pub struct Rule<T: Transformation> {
+pub struct Rule<T: Transformation<Slice>, Slice> {
     pub comp: T,
     pub result: T,
     pub rule_type: Match,
     pub repeat: Option<u64>
 }
 
-impl<T: Transformation> Rule<T> {
+impl<T: Transformation<Slice>, Slice> Rule<T, Slice> {
     /// Creates a new rule and verifies that the logic is correct
     pub fn new(comp: T, result: T, rule_type: Match, repeat: Option<u64>) -> Self {
         if !comp.equal_size(&result) {
@@ -156,14 +158,23 @@ pub enum Match {
 }
 
 /// Used to replace / compare with parts of MapState
-pub trait Transformation {
+pub trait Transformation<Slice> {
     /// Verifies that both transformations are of the same size
     /// Used for rules
     fn equal_size(&self, compared: &Self) -> bool;
+
+    /// Returns the transformation
+    fn get(&self) -> &Slice;
 }
 
 /// Represents the position for MapState
-pub trait Pos {}
+pub trait Pos<Position> {
+    /// Returns the position
+    fn get(&self) -> &Position;
+}
 
 /// Represents the direction for MapState
-pub trait Dir {}
+pub trait Dir<Direction> {
+    /// Returns the direction
+    fn get(&self) -> &Direction;
+}
