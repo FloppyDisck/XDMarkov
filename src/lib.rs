@@ -1,14 +1,11 @@
 pub mod markov1D;
 
 use std::marker::PhantomData;
-use rand::SeedableRng;
 
 /// Easy to use interface that handles the map transformations
 pub struct MarkovEngine<M: MapState<T>, T: Transformation> {
     pub state: M,
-    pub rules: Vec<Rule<T>>,
-    // TODO: implement random in the update functions
-    //pub seed: Box<dyn SeedableRng>
+    pub rules: Vec<Rule<T>>
 }
 
 impl<M: MapState<T>, T: Transformation> MarkovEngine<M, T> {
@@ -66,10 +63,9 @@ pub trait MapState<T: Transformation> {
         // Get the match result according to rules
         let matching = self.matching(&rule.comp, &rule.rule_type);
 
-        // Process the match is there is some result
+        // Process the match if there is some result
         return if let Some(matching) = matching {
-            let rule_type = rule.rule_type.clone();
-            match rule_type {
+            match rule.rule_type {
                 Match::Linear | Match::Random { .. } | Match::AllWithoutConflicts => {
                     // Go through all the matches and replace the item
                     for pos in matching.iter() {
@@ -90,7 +86,7 @@ pub trait MapState<T: Transformation> {
     }
 
     /// Rule logic router
-    fn matching(&self, pattern: &T, rule_type: &Match) -> Option<Vec<(Self::Pos, Self::Dir)>> {
+    fn matching(&mut self, pattern: &T, rule_type: &Match) -> Option<Vec<(Self::Pos, Self::Dir)>> {
         match rule_type {
             Match::Linear => self.linear_match(pattern),
             Match::Random { tries } => self.random_match(pattern, *tries),
@@ -103,7 +99,8 @@ pub trait MapState<T: Transformation> {
     fn linear_match(&self, pattern: &T) -> Option<Vec<(Self::Pos, Self::Dir)>>;
 
     /// Randomly picks for `tries` times until it finds an item that satisfies the rule or runs out of tries
-    fn random_match(&self, pattern: &T, tries: u64) -> Option<Vec<(Self::Pos, Self::Dir)>>;
+    /// Random must be mutable to properly consume random values
+    fn random_match(&mut self, pattern: &T, tries: u64) -> Option<Vec<(Self::Pos, Self::Dir)>>;
 
     /// Matches all items that dont conflict, if conflicting it may pick the "leftmost" item
     fn match_all_without_conflicts(&self, pattern: &T) -> Option<Vec<(Self::Pos, Self::Dir)>>;
