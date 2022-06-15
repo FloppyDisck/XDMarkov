@@ -21,7 +21,7 @@ impl<M: MapState<T>, T: Transformation> MarkovEngine<M, T> {
     pub fn update(&mut self) -> Option<(&Rule<T>, Vec<(M::Pos, M::Dir)>)> {
         for rule in self.rules.iter_mut() {
             // Skip rule if loops was reached
-            if let Some(times) = rule.repeat {
+            if let Some(times) = rule.steps {
                 if times == 0 {
                     continue;
                 }
@@ -113,16 +113,20 @@ pub trait MapState<T: Transformation> {
 }
 
 /// Individual Markov rule logic
+/// TODO: add parallel flag
+/// TODO: implement probability, rule may be randomly skipped
+/// TODO: add ruleset systems, loop, linear, random
+/// TODO: loops checks if a given rule is satisfied
 pub struct Rule<T: Transformation> {
     pub comp: T,
     pub result: T,
     pub rule_type: Match,
-    pub repeat: Option<u64>,
+    pub steps: Option<u64>,
 }
 
 impl<T: Transformation> Rule<T> {
     /// Creates a new rule and verifies that the logic is correct
-    pub fn new(comp: T, result: T, rule_type: Match, repeat: Option<u64>) -> Self {
+    pub fn new(comp: T, result: T, rule_type: Match, steps: Option<u64>) -> Self {
         if !comp.equal_size(&result) {
             // TODO: return a Result instead
             assert!(false, "Items must be of equal size");
@@ -131,22 +135,23 @@ impl<T: Transformation> Rule<T> {
             comp,
             result,
             rule_type,
-            repeat,
+            steps,
         }
     }
 
     /// If the rule has a set amount of repeats then it will try to bring it to 0
     pub fn use_repeat(&mut self) {
-        if let Some(times) = self.repeat {
+        if let Some(times) = self.steps {
             match times.checked_sub(1) {
                 None => {}
-                Some(sub) => self.repeat = Some(sub)
+                Some(sub) => self.steps = Some(sub)
             }
         }
     }
 }
 
 /// Contains all supported rule-types
+/// TODO: add linear with random dir
 #[derive(Clone)]
 pub enum Match {
     Linear,

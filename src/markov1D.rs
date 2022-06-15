@@ -35,11 +35,10 @@ impl<T: Eq + Clone> MapState<Transformation1D<T>> for MapState1D<T> {
     fn linear_match(&self, pattern: &Transformation1D<T>) -> Option<Vec<(Self::Pos, Self::Dir)>> {
         let item_pattern = pattern.get();
 
-        'state_iter: for i in 0..(self.state.len() + 1 - item_pattern.len()) {
-            if !self.match_pattern(i, item_pattern) {
-                continue 'state_iter
+        for i in 0..(self.state.len() + 1 - item_pattern.len()) {
+            if self.match_pattern(i, item_pattern) {
+                return Some(vec![(i, Self::Dir::Right)])
             }
-            return Some(vec![(i, Self::Dir::Right)])
         }
 
         None
